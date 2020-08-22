@@ -1,41 +1,45 @@
-# Images
+# Imágenes _(images)_
 
-## Building images
+## Construyendo _(build)_ imágenes
 
-A docker image is made of one or more layers. Each layer is built on top of the previous one and they're all immutable. This means you can't modify an existing layer, instead you create a new one made of changes from the previous layer. This is very similar to how `git`'s diff works.
+Una imagen _(image)_ docker está formada por una o más capas _(layers)_. Cada capa se construye arriba de la anterior, y son todas inmutables. Esto significa que no podés modificar una capa existente; en cambio, creás una nueva con los cambios respecto a la anterior. Esto es similar a como funcionan los diff's de `git`.
 
-In order to build an image, you will need a `Dockerfile`. Try the one for the web app image you've been using by `git clone`ing the [`gvilarino/docker-testing` public github repo](https://github.com/gvilarino/docker-testing).
+Para construir una imagen, vas a necesitar un `Dockerfile`. Probá el de la aplicación web que estuvimos usando haciendo `git clone` del [repositorio público `gvilarino/docker-testing`](https://github.com/gvilarino/docker-testing).
 
-In that project's root dir, do:
+En el directorio raíz de ese proyecto, hacé:
 
 ```
 docker build -t test-image .
 ```
 
-Aaaaaand that's it! 🐳
+Yyyy.... ¡Eso es todo! 🐳
 
-If you run it and inspect its contents, you'll notice it's the same as `gvilarino/docker-testing`'s, which mirrors the file system in that project.
+Si la ejecutás e inspeccionás su contenido, vas a ver que es lo mismo que el de `gvilarino/docker-testing`, que incluye los mismos archivos del proyecto git.
 
-Each instruction (`FROM`, `RUN`, etc.) in the `Dockerfile` generates a single, immutable layer.
+Cada instrucción (`FROM`, `RUN`, etc) en el `Dockerfile` genera una nueva capa inmutable.
 
-## Understanding layers and leveraging the cache
+## Entendiendo las capas y aprovechando la cache
 
-Notice that if you run the same command again, it will take no time at all. This is because docker caches each layer and doesn't re-build them if the build context and layer creation command didn't change since the last build.
+Notá que si volvés a correr ese mismo comando, no va a tardar nada. Esto es porque docker cachea cada capa y evita reconstruirla si el contexto de construcción y el comando de creación de la capa no cambiaron desde el último build.
 
-Now change the `FROM node:argon` line to `FROM node:6` so you try how it works with the latest `node.js` version and build it again
+Ahora cambiemos la línea `FROM node:argon` a `FROM node:6` así vemos cómo funciona con la última versión de `node.js`*, y volvamos a buildear.
 
-You'll see that all layers get rebuilt! This is because you changed the _base layer_; since all layers are just diffs from the previous one, by changing the base layer you invalidate the cache for all layers after it.
+Vas a ver que ¡todas las capas vuelven a construirse! Esto es porque cambiaste la capa _base_. Como todas las capas son simplemente un diff sobre la anterior, al cambiar la capa base invalidás el cache para todas las capas siguientes.
 
-Now change the string message in `index.js` and build again.
+Ahora cambiemos el mensaje de texto en `index.js` y volvamos a buildear.
 
-We now see that the base layer gets reused, but everything else gets re-done, including installing dependencies. In your everyday development workflow, you don't want to reinstall all dependencies just because you changed a single source file, you would only want that if you changed the `package.json` file. So let's tweak the `Dockerfile` to leverage the layer cache:
+Acá podemos ver que la capa base se reusa, pero todo lo demás se vuelve a hacer, incluída la instalación de dependencias. En tu flujo de trabajo cotidiano, no querés reinstalar las dependencias simplemente porque cambiaste un archivo fuente - sólo querrías hacer eso si cambiaste tu `package.json`. Así que cambiemos el `Dockerfile` para aprovechar la cache de capas.
 
-Change the `COPY [".", "/usr/src/"]` line to `COPY ["package.json", "/usr/src/"]`
+Cambiá la línea `COPY [".", "/usr/src/"]` a `COPY ["package.json", "/usr/src/"]`
 
-And add a new `COPY [".", "/usr/src/"]` after the `RUN npm install` instruction.
+Agregá un nuevo `COPY [".", "/usr/src/"]` luego de la instrucción `RUN npm install`.
 
-Now rebuild (it will rebuild all the first time), then change the text again in `index.js`, and rebuild again.
+Ahora volvé a buildear (va a reconstruir todo la primera vez), después volvé a cambiar el texto en `index.js` y volvé a reconstruir la imagen.
 
-Faster, right? 😎
+Más rápido, ¿eh? 😎
 
-You may publish this image by using the command `docker push`, but you'll need an account in [`hub.docker.com`](https://hub.docker.com); you can do that later on your own. For now, let's [learn how to `docker-compose`](https://github.com/gvilarino/docker-workshop/tree/master/3-docker-compose)
+Podés publicar esta imagen usando el comando `docker push`, pero para eso vas a necesitar una cuenta en [`hub.docker.com`](https://hub.docker.com); te dejo eso como tarea para después. Por ahora, [apreandamos a usar `docker-compose`](https://github.com/mgarciaisaia/docker-workshop/tree/master/3-docker-compose).
+
+------
+
+* Sí, la guía original tiene sus años
