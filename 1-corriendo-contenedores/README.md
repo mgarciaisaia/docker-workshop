@@ -1,98 +1,99 @@
-# Containers
+# Contenedores
 
-## Running, detaching and attaching to containers
+## Corriendo, soltando _(detaching)_ y conectándose _(attaching)_ a contenedores
 
-Let's run a mongo database! And with a cute name.
+¡Corramos una base de datos Mongo! Y con un nombre bonito.
 
 ```
 docker run --name db mongo
 ```
 
-🤔 but I don't want to be attached to the output... Just CTRL+c to quit and let's remove that container.
+🤔 Pero no me quiero quedar conectado a su salida estándar... Démosle CTRL+C para salir, y después borremos ese contenedor.
 
 ```
 docker rm db
 ```
 
-Now let's run a new mongo container, but in the background with the `-d` flag (`d` as in `detach`).
+Ahora corramos un nuevo contenedor de Mongo, pero en segundo plano (en _background_), con el modificador `-d` (`d` de `detach`, despegarse, soltar).
 
 ```
 docker run --name db -d mongo
 ```
 
-Cool! Now let's check out the mongo database. First you need to sort-of-`ssh` into the container. You don't actually use `ssh`, instead you can _execute_ a command with the interactive mode, like so:
+¡Bien! Ahora revisemos la base de datos. Primero necesitamos hacer algo así como un `ssh` a dentro del contenedor. Pero no usamos _realmente_ `ssh`, si no que podemos usar `execute` para ejecutar un comando en el contenedor en modo interactivo. Algo así:
 
 ```
 docker exec -it db mongo
 ```
 
-You may understand this command as: "Hey, `docker`, please `exec`ute  the `mongo` command in the container named `db`, and do it as an ineteractive `-it` command, so I can attach my STDIN and STDOUT to it".
+Podés interpretar este comando como "Hey, `docker`, ejecutame (`exec`) el comando `mongo` dentro del contenedor llamado `db`, y hacelo de modo interactivo (`-it`) para poder conectarle mi entrada y salida estándar (`STDIN` y `STDOUT`)".
 
-Now you're running the `mongo` command in the `db` container. Toy around and then CTRL+c to quit.
+Ahora simplemente estás corriendo el comando `mongo` en el contenedor `db`. Jugá un rato, y después dale CTRL+C para salir.
 
-If you now do `docker ps` you'll notice the `db` container is still running. It didn't stop because the main process, the `mongo` database process (with `pid 1`), is still running. The process you killed by quitting was just the mongo shell you ran when doing `docker exec`.
+Si ahora hacés `docker ps`, vas a notar que el contenedor `db` sigue ejecutando. No frenó, porque el proceso principal (el proceso `mongo` de la base de datos, con `pid 1`) sigue ejecutando. El proceso que mataste al salir de la sesión fue simplemente la consola de Mongo que ejecutaste al hacer `docker exec`.
 
-Now let's connect to it from _another_ container.
+Ahora conectémonos a él desde _otro_ contenedor.
 
 ```
 docker pull gvilarino/docker-testing
 ```
 
-This will get you a very simple `node.js` app that tries to connect to a mongo DB and informs if it succeeds (you may check out the code [here](https://github.com/gvilarino/docker-testing)). Once it downloads, just:
+Esto te va a descargar una aplicación `node.js` muy simple que intenta conectarse a una base de datos Mongo e informa si lo logra (podés mirar el código [acá](https://github.com/gvilarino/docker-testing)). Cuando termine de descargar, simplemente hacé:
 
 ```
 docker run -d --name app gvilarino/docker-testing
 ```
 
-Now check if it did something:
+Ahora fijate si hizo algo:
 
 ```
 docker logs app
 ```
 
-It seems the app is listening on port 3000. Let's browse to `localhost:3000`
+Parece que la aplicación está escuchando en el puerto 3000. Naveguemos a `localhost:3000`
 
-🤔 it doesn't reach the app... Let's look closer:
+🤔 No logra conectarse a la aplicación... Miremos más de cerca:
 
 ```
 docker ps -a
 ```
 
-As you can see under `PORTS`, it seems the app *is* listening in port 3000, but... 😮 Of course! That's just the container's _internal_ port! You need to *bind* the container port to a port in our host. So, kill this app container with `docker rm -f app` and let's create a new one properly.
+Como podés ver bajo `PORTS` (puertos), parece que la app _está_ escuchando en el puerto 3000, pero... 😮 ¡Claro! ¡Ese es el puerto _interno_ del contenedor! Lo que necesitás es _vincular_ ("bind") el puerto del contenedor a un puerto en nuestra máquina. Así que, eliminá este contenedor de la app con `docker rm -f app` y creemos uno nuevo como corresponde.
 
 ```
 docker run -d --name app -p 3000:3000 gvilarino/docker-testing
 ```
 
-Now check `localhost:3000` again.
+Ahora revisá `localhost:3000` otra vez.
 
-Ok, so we did manage to get there, but it seems it isn't reaching the DB. If you attach to the app container (with `docker exec`) and check the `index.js` file, you'll notice it's attempting to connect to a host named `db`. Our database container has that very same name. Then why isn't it reaching it?
+Bien, parece que pudimos llegar hasta ahí, pero también parece que la app no está llegando a conectarse a la DB. Si te conectás al contenedor de la app (con `docker exec`) y revisás el archivo `index.js`, vas a notar que está intentando conectarse a un equipo llamado `db`. Nuestro contenedor de la base de datos tiene exactamente ese mismo nombre. ¿Por qué no está llegando, entonces?
 
-## Docker networks
+## Redes docker _(networks)_
 
-In order for a container to be visible to another one, they must both belong to the same _network_. Docker networks are virtual private network docker uses to connect containers safely and privately, as if they were real hosts in a real, physical network.
+Para que un contenedor sea visible a otro, ambos deben pertenecer a la misma red _(network)_. Las redes Docker son redes privadas virtuales que Docker usa para conectar a los contenedores de manera segura y privada, como si fueran equipos reales en una red física y real.
 
-Let's create a simple network:
+Creemos una red simple:
 
 ```
 docker network create app-network
 ```
 
-Now let's check it out:
+Ahora revisémosla:
 
 ```
 docker network ls
 ```
 
-It seems all's in place. Let's connect our containers to that network.
+Parece que todo está en orden. Conectemos nuestros contenedores a esa red.
 
 ```
 docker network connect app-network db
 docker network connect app-network app
 ```
 
-Now check `localhost:3000` one more time.
+Ahora revisá `localhost:3000` una vez más.
 
 😎🐳
 
-Ok, now you're ready to [learn how to work with images](https://github.com/gvilarino/docker-workshop/tree/master/2-building-images).
+Bien, ya estamos en condiciones de [aprender a trabajar con imágenes]()
+Ok, now you're ready to [learn how to work with images](https://github.com/mgarciaisaia/docker-workshop/tree/master/2-construyendo-imagenes).
