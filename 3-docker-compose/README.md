@@ -1,90 +1,90 @@
 # Docker compose
 
-While docker allows you to easily build and link different apps with different environments and runtimes, doing so with more than just two or three containers quickly becomes tedious. `docker-compose` allows you to work with complex container systems very easily.
+Si bien docker te permite construir y conectar fácilmente distintas aplicaciones con entornos y _runtimes_ diferentes, hacerlo con más de dos o tres contenedores se vuelve tedioso. `docker-compose` te permite trabajar con un sistema de contenedores complejo de manera sencilla.
 
-First check if you have docker-compose installed (chances are that you have) by doing:
+Primero fijate que tengas `docker-compose` instalado (es probable) haciendo:
 
 ```
 docker-compose --version
 ```
 
-If that fails, [get `docker-compose` for you specific setup](https://docs.docker.com/compose/install/)
+Si eso falla, [instalate el `docker-compose` para tu plataforma](https://docs.docker.com/compose/install/)
 
-For working with `docker-compose`, you will need a `docker-compose.yml` file. Check out the one under the [`gvilarino/docker-testing` repo](https://github.com/gvilarino/docker-testing).
+Para trabajar con `docker-compose` vas a necesitar un archivo `docker-compose.yml`. Fijate que el que está en el [repo `gvilarino/docker-testing`](https://github.com/gvilarino/docker-testing).
 
-Make sure you aren't running any containers. The from the project root, do:
+Asegurate de no estar corriendo ningún contenedor. Luego, desde el directorio ráiz del proyecto, ejecutá:
 
 ```
 docker-compose up -d
 ```
 
-Magic ✨🐳
+¡Magia! ✨🐳
 
-What just happened was that docker created all containers needed for the whole system, linked them appropriately in a network and bound all required ports.
+Lo que acaba de ocurrir es que docker creó todos los contenedores necesarios para el sistema, los conectó correctamente en una red y les vinculó todos los puertos necesarios.
 
 ```
 docker-compose ps
 ```
 
-You can see a simpler variation of `docker ps`, based on the items described in the `docker-compose.yml`. Each of these items are called _services_
+Acá podés ver una variante más simple de `docker ps`, basada en los elementos que describiste en el `docker-compose.yml`. Cada uno de esos elementos se llama _servicios_ _(services)_.
 
-Compare it to `docker ps`. They look alike, right? The difference is that containers names are generated as instances of the service, but the service itself is a compose-related concept.
+Comparalo con `docker ps`. Se parecen, ¿no? La diferencia es que los nombres de los contenedores se generan como instancias del servicio, pero el servicio en sí mismo es un concepto propio de `docker-compose`.
 
-Browse `localhost:3000` and you'll see a familiar page.
+Navegá a `localhost:3000` y vas a ver una página familiar.
 
-## Services
+## Servicios _(services)_
 
-A service is the most elemental building block in a docker-compose environment. It's a specification on how you want containers for that service to run via `docker-compose`.
+Un servicio es el componente fundamental de docker-compose. Es una especificación sobre cómo queres que corran los contenedores de ese servicio a través de `docker-compose`.
 
-The `depends_on` property indicates which services should be started before starting the one with the property. This helps indicate service precedence.
+La propiedad `depends_on` _("depende de")_ indica qué servicios deberían iniciarse antes de iniciar el que tiene esa propiedad. Esto ayuda a indicar la precedencia de servicios.
 
-You can also indicate specific environment variable values for containers with the `environment` property.
+También podés especificar valores de las variables de entorno con la propiedad `environment` _("entorno")_.
 
-Change the value in `MONGO_URL` to `mongodb://foo/test`
+Cambiá el valor de `MONGO_URL` a `mongodb://foo/test`.
 
-Browse to `localhost:3000`. You'll see nothing changed... That's because you need to recreate the container!
+Navegá a `localhost:3000`. Vas a ver que nada cambió... ¡Porque tenés que recrear el contenedor!
 
 ```
 docker-compose up -d
 ```
 
-You'll see the `app` service gets re-created and if you once again browse to `localhost:3000` you'll se the error message.
+Vas a ver que el servicio `app` se re-crea y, si volvés a navegar a `localhost:3000`, vas a ver el mensaje de error.
 
-## `docker-compose` as a developer's tool
+## `docker-compose` como una herramienta de desarrollo
 
-Now let's say you want to use this setup to work, so you'll need a way for trying your code changes with compose. Let's start by building your own image *with* compose:
+Digamos que querés usar esta configuración para trabajar, así que necesitás una forma de probar los cambios de tu código usando compose. Empecemos construyendo tu propia imagen *con* compose:
 
-Remove the `image` property from the `app` service and add this one:
+Borrá la propiedad `image` del servicio `app` y agregá esta otra:
 
 ```
 build: .
 ```
 
-This instructs docker-compose where to look for a build context for that service. Now:
+Esto le dice a docker-compose dónde buscar un contexto de construcción de imágen para ese servicio. Ahora:
 
 ```
 docker-compose build
 ```
 
-You'll see some familiar output. After it's finished, do:
+Vas a ver unos mensajes familiares. Cuando termine, hacé:
 
 ```
 docker images
 ```
 
-See how an image with a generated name is created. You can use this image as any other and run a container with `docker run`, but for now let's:
+Fijate cómo se creó una imagen nueva con un nombre generado. Podés usar esta imagen como cualquier otra y correr un contenedor haciendo `docker run`, pero por ahora hagamos:
 
 ```
 docker-compose up -d
 ```
 
-The service got re-created based on the new image.
+Los servicios se re-crearon usando la nueva imagen.
 
-This allows us to leverage the layer cache for each re-build and you can `docker-compose build` for iterating our source... which sucks 😩
+Esto nos permite aprovechar la cache de capas en cada re-construcción, y podés hacer `docker-compose build` para cada cambio que hacés en el código... un espanto 😩
 
-In order for your flow to be quick, you need to be able to re-create the service containers with new contents without re-building the whole image. So instead of re-building the image, you'll re-create the service container if there's a change in the source files. For that you have to _mount_ the local filesystem on top of the containers, like so:
+Para que tu flujo de trabajo sea rápido, necesitás poder re-crear los contenedores de los servicios con contenido nuevo sin re-construir toda la imagen. Así que en lugar de re-construir la imagen, vas a re-crear el contenedor del servicio si hay cambios en los archivos fuente. Para eso, tenés que _montar_ _(mount)_ el sistema de archivos local sobre los contenedor, así:
 
-in the `app:` section of the `docker-compose.yml` file add:
+En la sección `app:` del archivo `docker-compose.yml` agregá:
 
 ```
 volumes:
@@ -92,8 +92,12 @@ volumes:
   - /usr/src/node_modules
 ```
 
-That's how you mount the source files into the container. We specifically exclude the `node_modules` path because we don't want to ever overwrite them even if theres a `node_modules` directory in the host machine.
+Así es como se montan los archivos fuente en el contenedor. Excluímos _específicamente_ el directorio `node_modules` porque no queremos sobreescribirlo si llegara a haber un directorio `node_modules` en la máquina host.
 
-Now change something in `index.js` and `docker-compose up -d`. You'll notice how the service container gets recreated with the new source without having to re-build the underlying image.
+Ahora hacé un cambio en el `index.js` y hacé `docker-compose up -d`. Vas a ver cómo el contenedor del servicio se re-crea con los nuevos archivos fuente sin tener que re-construir toda la imagen.
 
-Now let's get serious, and [unleash the swarm](https://github.com/gvilarino/docker-workshop/tree/master/4-docker-swarm).
+Ahora pongámonos seri@s, y [liberemos al enjambre](https://github.com/mgarciaisaia/docker-workshop/tree/master/4-docker-swarm)*.
+
+------------
+
+* La frase original era _unleash the swarm_, donde "unleash" es algo así como _liberar todo el potencial de_, y `Docker Swarm` es la tecnología que permite manejar grupos de servidores (un "enjambre"), pero no encontré forma de traducir esta expresión sin que pierda el 80% de su significado.
