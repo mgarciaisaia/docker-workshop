@@ -1,144 +1,148 @@
 # Docker swarm
 
-Docker's swarm mode allows you to go all serious about large scale, highly available docker environments. It basically lets you handle a cluster of machines as a single docker daemon, with automatic failover, container scheduling, routing and tons of other goodies.
+El modo enjambre _(Swarm)_ de Docker te permite trabajar en serio con ambientes docker de gran escala y alta disponibilidad. Básicamente te permite manejar un clúster de máquinas como si fuera un único daemon de docker, con reemplazo de fallos _(failover)_ automático, planificación de contenedores, ruteo y otro montón de bondades.
 
-This last section will walk you through creating a simple swarm cluster and the basic concepts. Do be noted that understanding docker swarm in its fullest is *way* beyond the scope of this guide. In any case, let's cut to the chase, shall we.
+Esta última sección te guiará en la creación de un clúster simple de Swarm y en los conceptos básicos. Sí notá que entender Docker Swarm en su totalidad está _muy_ fuera del alcance de esta guía. En cualquier caso, vayamos al grano.
 
-## Get some nodes
+## Conseguir algunos nodos
 
-In order to have a docker swarm going, you'll need a machine cluster, for which you'll need machines. Quickest, coolest way is by using [`play-with-docker`](http://play-with-docker.com/) to try it online. If you'd rather try it locally, you'll need [`docker-machine`](https://docs.docker.com/machine/) and [`Virtualbox`](https://www.virtualbox.org/). If you're running `Docker for mac` or `Docker for windows` you probably already have it installed; `Linux` users should get `docker-machine` separately.
+Para tener un enjambre de docker, primero necesitás un clúster de máquinas, para lo que necesitás máquinas. La forma más rápida y piola de conseguirlo es usando [`play-with-docker`](http://play-with-docker.com/) para probarlo en línea. Si preferís probarlo localmente, vas a necesitar [`docker-machine`](https://docs.docker.com/machine/) y [`Virtualbox`](https://www.virtualbox.org/). Si estás corriendo `Docker for Mac` o `Docker for Windows`, probablemente ya lo tengas instalado; en Linux vas a tener que instalar `docker-machine` por separado.
 
-The main difference is how long it'll take you to have the swarm ready. If you're just trying it out, the online route is probably what you want. If you'd like your swarm to be persistent or try some extra stuff you'll want to use the local approach (it may get resource intensive).
+La principal diferncia es cuánto te va a llevar tener el enjambre listo. Si sólo querés hacer alguna prueba rápida, probablemente quieras usar la versión online. Si querés tener un enjambre persistente o probar alguna cosa extra, andá por el camino de ejecutar localmente (ojo que puede requerir bastantes recursos).
 
-Pick your poison and choose one of the following:
+Elegí tu propio veneno y andá por alguno de estos dos:
 
-#### Online sandbox
+#### Arenero _(sandbox)_ en línea
 
-Browse to [`play-with-docker`](http://play-with-docker.com/) and create three nodes with the "+ ADD NEW INSTANCE" button.
+Navegá a [`play-with-docker`](http://play-with-docker.com/) y creá tres nodos usando el botón "+ ADD NEW INSTANCE" _(Agregar nueva instancia)_.
 
-Skip to the [next section](https://github.com/gvilarino/docker-workshop/tree/master/4-docker-swarm#get-swarmin).
+Saltá a [la próxima sección](https://github.com/mgarciaisaia/docker-workshop/tree/master/4-docker-swarm#enjambrate).
 
-#### Local swarm
+#### Enjambre local
 
-Make sure you have `docker-machine` installed by doing:
+Asegurate de tener `docker-machine` instalado, ejecutando:
 
 ```
 docker-machine --version
 ```
 
-Start by creating the cluster master node:
+Empezá creando el nodo maestro del clúster:
 
 ```
 docker-machine create -d virtualbox manager
 ```
 
-That created a manager node. You can `ssh` into it if you like:
+Eso creó un nodo administrador. Podés entrar por `ssh` si querés:
 
 ```
 docker-machine ssh manager
 ```
 
-Cool, innit? Now `exit` and create some worker nodes:
+Piola, ¿eh? Ahora dale `exit` y creemos algunos nodos trabajadores _(workers)_.
 
 ```
 docker-machine create -d virtualbox worker1
 docker-machine create -d virtualbox worker2
 ```
 
-Now you'll need to talk to the docker daemon in the manager node. You may `ssh` into it, but let's do it from the outside, which is more similar to what you'd do in a real-world scenario.
+Ahora necesitás hablarle al daemon de docker en el nodo administrador. Podrías hacerlo entrando por `ssh`, pero hagámoslo desde afuera, que se parece más a cómo querrías hacerlo en el mundo real.
 
-The quick way to do this is by doing:
+La forma rápida de hacerlo es ejecutando:
 
 ```
 eval $(docker-machine env manager)
 ```
 
-This command set some env vars that tells your docker client where and how to find the docker daemon it's supposed to communicate with. Check which ones by doing:
+Este comando escribe unas variables de entorno que le indican a tu cliente docker dónde y cómo encontrar al daemon docker con el que querés que se comunique. Fijate cuáles son esas variables haciendo:
 
 ```
 env | grep DOCKER
 ```
 
-Note that every command you tell docker to run will actually run on the manager's docker daemon, so if you do `docker images` or `docker ps` you won't see the stuff you've been workin on during this workshop since you aren't talking to your local daemon anymore.
+Notá que cada comando que le pidas a docker que corra va a ejecutarse en el dameon docker del nodo administrador, por lo que si hacés `docker images` o `docker ps` no vas a ver las cosas con las que estuvimos trabajando hasta ahora, porque ya no estás hablando con tu dameon docker local.
 
-If you want to revert to talking to your local daemon either open a new terminal or `unset` those env vars.
+Para volver a trabajar con tu daemon local podés abrir una nueva terminal o hacerle `unset` a esas variables de entorno.
 
-### Get swarmin'
+### Enjambrate*
 
-Let's get this swarm started. Grab a hold of the manager node host IP. In `play-with-docker` you'll see it in node's terminal prompt; if running locally with `docker-machine` it's usually `192.168.99.100`
+Arranquemos con este enjambre. Conseguite la IP del nodo administrador. En `play-with-docker` la vas a ver en el prompt de la terminal del nodo; si estás ejecutando de manera local con `docker-machine`, suele ser `192.168.99.100`.
 
 ```
-docker swarm init --advertise-addr <manager node's ip>
+docker swarm init --advertise-addr <IP del nodo administrador>
 ```
 
-This set the node's docker daemon to swarm mode and output the `swarm join` command you'll need for other nodes to join this swarm. Copy it to your clipboard; you'll need it soon.
+Esto configura al daemon docker del nodo en modo swarm, e imprime el comando `swarm join` _(unirse al enjambre)_ que vas a necesitar para que otros nodos se unan a este enjambre. Copialo al portapapeles, que lo vas a necesitar pronto.
 
-Verify the swarm status by doing.
+Verificá el estado del enjambre haciendo:
 
 ```
 docker info
 ```
 
-You can see under `Swarm` the swarm state.
+Podés ver el estado del enjambre debajo de `Swarm`.
 
-See the swarm nodes with:
-
-```
-docker node ls
-```
-
-Now let's make both worker nodes join the swarm cluster: run the command you just copied into your clipboard inside each of the worker nodes (if running locally, `docker-machine ssh` into both workers and `exit` back to your terminal)
-
-See now that your swarm is 3 nodes big:
+Mirá los nodos del enjambre con:
 
 ```
 docker node ls
 ```
 
-You now have a 3-node working swarm cluster 😎
+Ahora hagamos que ambos nodos trabajadores se unan al clúster del enjambre: corré el comando que acabás de copiar al portapapeles dentro de cada uno de los nodos trabajadores (si estás ejecutando localmente, metete a los workers con `docker-machine ssh` y después hacé `exit` para volver a tu terminal).
 
-## Services
+Fijate que ahora tu enjambre tiene 3 nodos:
 
-Just like `docker-compose` works with the concept of services, so does docker swarm. Let's create a very simple service that pings `docker.com`
+```
+docker node ls
+```
+
+Ya tenés un clúster de 3 nodos actuando como enjambre 😎
+
+## Servicios
+
+Docker swarm trabaja con el concepto de servicios, como `docker-compose`. Creemos un servicio simple que haga ping a `docker.com`.
 
 ```
 docker service create --name pinger --replicas 1 alpine ping docker.com
 ```
 
-See some info about the service by doing
+Veamos algo de información del servicio haciendo:
 
 ```
 docker service inspect --pretty pinger
 ```
 
-Check its status by doing:
+Verifiquemos su estado haciendo:
 
 ```
 docker service ps pinger
 ```
 
-You can see in which node it's running. Now let's scale the service by getting more replicas of it (each replica is a container):
+Podés ver en qué nodo está ejecutando. Ahora, escalemos el servicio poniéndole más réplicas (cada réplica es un contendor):
 
 ```
 docker service scale pinger=5
 ```
 
-Now if you `docker service ps pinger` you'll see in which nodes the new replicas are running.
+Si ahora hacés `docker service ps pinger` vas a ver en qué nodos están ejecutando las nuevas réplicas.
 
-Now you have a full-fledged local docker swarm.
+¡Ya tenés un enjambre docker local completo!
 
-Let's kill one of the worker nodes and see how docker re-schedules its containers: in `play-with-docker` just hit the delete button in any of the worker nodes. If running locally just `docker-machine rm worker2`
+Ahora matemos uno de los nodos trabajadores y veamos cómo docker re-planifica sus contenedores: en `play-with-docker` simplemente tocá el botón "Delete" _(eliminar)_ de cualquiera de los nodos trabajadores. Si estás ejecutando localmente, hacé `docker-machine rm worker2`.
 
-Now `docker service ps pinger` repeatedly to see how some of the pop up in the other nodes automatically. How cool is that?
+Ahora hacé `docker service ps pinger` repetidamente para ver cómo van apareciendo en los otros nodos automáticamente. ¿Copado, eh?
 
-You now have a resilient, distributed application running in a docker swarm cluster ✨
+Ya tenés una aplicación resiliente y distribuída corriendo en un clúster de docker swarm ✨
 
-## Final words
+## Palabras finales
 
-These are just the docker basics, you'll learn a lot more by addressing real-life scenarios, so get hackin'
+Estos son sólamente los conceptos básicos de docker: vas a aprender mucho más tratando con casos reales, así que _a hackearla se ha dicho_.
 
-Hopefully this repo will encourage you to [do some more research on your own](https://docs.docker.com) and make docker part of your development toolkit and prod pipelines.
+Con algo de suerte este repo te ayude a [investigar más por tu cuenta](https://docs.docker.com) y tener a docker como parte de tu caja de herramientas de desarrollo y procesos de producción.
 
-Please feel free to update/fix anything that you see improvable in this repo, and if you liked it spread the word.
+Sentite libre de actualizar/corregir cualquier cosa que veas mejorable en este repo, y si te gustó, difundilo.
 
-Thanks for reading 🙇
+¡Gracias por leer! 🙇
+
+---------
+
+* El título original de la sección era `Get swarmin'`, que es un tipo de expresión en inglés para indicar _"metete en la cosa"_, para distintos valores de "la cosa". Qué se yo 🤷‍
